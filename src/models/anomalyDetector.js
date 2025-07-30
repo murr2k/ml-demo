@@ -123,21 +123,21 @@ export class AnomalyDetector {
         // Introduce anomalies
         const anomalyType = Math.floor(Math.random() * 4)
         switch (anomalyType) {
-        case 0: // Sensor failure (zero reading)
-            reading[Math.floor(Math.random() * reading.length)] = 0
-            break
-        case 1: // Sensor spike
-            reading[Math.floor(Math.random() * reading.length)] = 1
-            break
-        case 2: // Multiple sensors affected
-            reading[0] *= 0.1
-            reading[1] *= 0.1
-            break
-        case 3: // Gradual drift
-            reading.forEach((val, idx) => {
-                reading[idx] = val * 0.3
-            })
-            break
+            case 0: // Sensor failure (zero reading)
+                reading[Math.floor(Math.random() * reading.length)] = 0
+                break
+            case 1: // Sensor spike
+                reading[Math.floor(Math.random() * reading.length)] = 1
+                break
+            case 2: // Multiple sensors affected
+                reading[0] *= 0.1
+                reading[1] *= 0.1
+                break
+            case 3: // Gradual drift
+                reading.forEach((val, idx) => {
+                    reading[idx] = val * 0.3
+                })
+                break
         }
 
         return {
