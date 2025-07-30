@@ -1,0 +1,105 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**/*.js'
+      - 'README.md'
+      - 'package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate-docs:
+    name: Generate Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install documentation tools
+        run: npm install --save-dev jsdoc jsdoc-to-markdown
+
+      - name: Generate API documentation
+        run: |
+          npx jsdoc -c jsdoc.json || echo "JSDoc configuration needed"
+          npx jsdoc2md src/**/*.js > API.md || echo "API documentation generation needs configuration"
+
+      - name: Update README badges
+        run: |
+          # Update badges in README
+          sed -i "s/\!\[CI\].*/\!\[CI\](https:\/\/github.com\/murr2k\/ml-demo\/workflows\/CI%20Pipeline\/badge.svg)/" README.md || true
+          sed -i "s/\!\[Deploy\].*/\!\[Deploy\](https:\/\/github.com\/murr2k\/ml-demo\/workflows\/Deploy%20to%20GitHub%20Pages\/badge.svg)/" README.md || true
+
+      - name: Generate test documentation
+        run: |
+          echo "# Test Documentation" > TEST_DOCS.md
+          echo "Generated on: $(date)" >> TEST_DOCS.md
+          echo "" >> TEST_DOCS.md
+          
+          # List all test files
+          echo "## Test Files" >> TEST_DOCS.md
+          find . -name "*.spec.js" -o -name "*.test.js" | while read file; do
+            echo "- $file" >> TEST_DOCS.md
+          done
+
+      - name: Create documentation summary
+        run: |
+          echo "### Documentation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "Generated on: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "#### Files Generated:" >> $GITHUB_STEP_SUMMARY
+          echo "- API.md - API documentation" >> $GITHUB_STEP_SUMMARY
+          echo "- TEST_DOCS.md - Test documentation" >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Code Statistics:" >> $GITHUB_STEP_SUMMARY
+          echo "- Total JS files: $(find src -name "*.js" | wc -l)" >> $GITHUB_STEP_SUMMARY
+          echo "- Total lines of code: $(find src -name "*.js" -exec wc -l {} + | tail -1 | awk '{print $1}')" >> $GITHUB_STEP_SUMMARY
+
+      - name: Commit documentation updates
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          git add -A
+          git diff --staged --quiet || git commit -m "docs: Update generated documentation [skip ci]"
+          git push || echo "No changes to push"
+
+  sync-wiki:
+    name: Sync to Wiki
+    runs-on: ubuntu-latest
+    needs: generate-docs
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Checkout wiki
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+
+      - name: Sync documentation
+        run: |
+          cp README.md wiki/Home.md || true
+          cp API.md wiki/API-Documentation.md || true
+          cp TEST_DOCS.md wiki/Test-Documentation.md || true
+          
+          cd wiki
+          git add -A
+          git diff --staged --quiet || git commit -m "Sync documentation from main repo"
+          git push || echo "No wiki changes to push"

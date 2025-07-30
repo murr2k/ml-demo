@@ -2,10 +2,13 @@
 
 A comprehensive machine learning demonstration showcasing real-time capabilities for autonomous vehicle technology, built with TensorFlow.js and LightningChart JS.
 
+![CI Pipeline](https://github.com/murr2k/ml-demo/workflows/CI%20Pipeline/badge.svg)
+![Deploy](https://github.com/murr2k/ml-demo/workflows/Deploy%20to%20GitHub%20Pages/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![TensorFlow.js](https://img.shields.io/badge/TensorFlow.js-4.22.0-orange.svg)
 ![LightningChart](https://img.shields.io/badge/LightningChart-7.1.2-blue.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D16.0.0-brightgreen)
+[![Dependabot](https://img.shields.io/badge/Dependabot-enabled-blue.svg)](https://github.com/murr2k/ml-demo/network/dependencies)
 
 ## 🚀 Overview
 
@@ -14,36 +17,42 @@ This demo showcases advanced machine learning capabilities relevant to autonomou
 ## ✨ Features
 
 ### 1. **Trajectory Prediction** 🚗
+
 - LSTM-based neural network for real-time path prediction
 - Physics-based trajectory smoothing
 - Multi-agent support with visual tracking
 - Confidence-based prediction visualization
 
 ### 2. **Sensor Anomaly Detection** 📡
+
 - Autoencoder-based anomaly detection system
 - Real-time monitoring of 5 sensor types (LiDAR, Camera, Radar, IMU, GPS)
 - Configurable detection thresholds
 - Visual anomaly highlighting
 
 ### 3. **Object Detection Confidence** 🎯
+
 - Multi-class object detection simulation
 - Support for vehicles, pedestrians, cyclists, and traffic infrastructure
 - Bounding box visualization with confidence scores
 - Object tracking between frames
 
 ### 4. **Model Performance Metrics** 📊
+
 - Real-time inference time tracking
 - FPS monitoring and visualization
 - CPU and memory usage dashboards
 - Comprehensive performance analytics
 
 ### 5. **Continuous Learning Progress** 🧠
+
 - Online learning simulation
 - Training progress visualization
 - Model versioning and checkpointing
 - Performance improvement tracking
 
 ### 6. **Real-time Sensor Fusion** 🔄
+
 - 3D visualization of fused sensor data
 - Individual sensor contribution tracking
 - Confidence-based fusion algorithms
@@ -68,17 +77,20 @@ This demo showcases advanced machine learning capabilities relevant to autonomou
 ## 🔧 Installation
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/murr2k/ml-demo.git
 cd ml-demo
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
 3. Start the development server:
+
 ```bash
 npm run dev
 ```
@@ -88,28 +100,33 @@ npm run dev
 ## 📖 Usage Guide
 
 ### Trajectory Prediction Panel
+
 - **Start Prediction**: Begin real-time trajectory prediction for all active agents
 - **Add Vehicle**: Create new agents with random movement patterns
 - **Clear**: Remove all agents and predictions
 - Watch as the ML model predicts future paths (shown as semi-transparent lines)
 
 ### Sensor Anomaly Detection Panel
+
 - **Start Monitoring**: Begin real-time sensor data streaming
 - **Inject Anomaly**: Manually trigger an anomalous reading
 - **Reset**: Clear all sensor data
 - **Threshold Slider**: Adjust detection sensitivity (0.5-1.0)
 
 ### Object Detection Panel
+
 - **Start Detection**: Begin object detection simulation
 - **Simulate Scene**: Create a complex traffic scenario
 - Objects are color-coded by type with confidence-based transparency
 
 ### Continuous Learning Panel
+
 - **Train Iteration**: Simulate one epoch of model training
 - **Load Checkpoint**: Restore a previous model state
 - Watch loss decrease and accuracy improve over time
 
 ### Sensor Fusion Panel
+
 - **Toggle Sensors**: Enable/disable individual sensors (LiDAR, Camera, Radar)
 - View 3D visualization of integrated sensor data
 - Monitor sensor health status in real-time
@@ -140,11 +157,13 @@ ml-demo/
 ## 🧪 Testing
 
 Run the automated tests:
+
 ```bash
 npx playwright test
 ```
 
 This will:
+
 - Launch a headless browser
 - Verify all charts render correctly
 - Test interactive controls
@@ -177,6 +196,7 @@ The optimized build will be in the `dist/` directory.
 ## 📈 Changelog
 
 ### v1.0.0 (2025-01-30)
+
 - Initial release
 - Implemented 6 core ML demonstrations
 - Real-time visualization with LightningChart JS
@@ -191,6 +211,7 @@ The optimized build will be in the `dist/` directory.
 - Responsive design for various screen sizes
 
 ### v0.9.0 (2025-01-30) - Pre-release
+
 - Fixed LightningChart license configuration
 - Added error handling and logging
 - Improved chart initialization
@@ -237,9 +258,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📧 Contact
 
 **Murray Kopit**
+
 - GitHub: [@murr2k](https://github.com/murr2k)
 - Email: murr2k@gmail.com
 
 ---
 
-*This demo is designed to showcase technological capabilities for prospective clients and employers. It demonstrates proficiency in machine learning, real-time systems, and modern web technologies relevant to the autonomous vehicle industry.*
+_This demo is designed to showcase technological capabilities for prospective clients and employers. It demonstrates proficiency in machine learning, real-time systems, and modern web technologies relevant to the autonomous vehicle industry._

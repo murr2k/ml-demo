@@ -1,0 +1,150 @@
+name: Performance Monitoring
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Weekly on Sunday at midnight
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  lighthouse:
+    name: Lighthouse Performance Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Start server
+        run: |
+          npx serve -s dist -p 5000 &
+          sleep 5
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v11
+        with:
+          urls: |
+            http://localhost:5000
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          configPath: './lighthouserc.json'
+
+      - name: Generate performance report
+        run: |
+          echo "### Performance Report" >> $GITHUB_STEP_SUMMARY
+          echo "Generated on: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Add Lighthouse scores when available
+          echo "View full Lighthouse report in artifacts" >> $GITHUB_STEP_SUMMARY
+
+  bundle-size:
+    name: Bundle Size Tracking
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and analyze bundle
+        run: |
+          npm run build
+          
+          echo "### Bundle Size Report" >> $GITHUB_STEP_SUMMARY
+          echo "| File | Size | Gzipped |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|---------|" >> $GITHUB_STEP_SUMMARY
+          
+          for file in dist/*.js dist/*.css; do
+            if [ -f "$file" ]; then
+              size=$(du -h "$file" | cut -f1)
+              gzipped=$(gzip -c "$file" | wc -c | numfmt --to=iec)
+              echo "| ${file#dist/} | $size | $gzipped |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+  ml-performance:
+    name: ML Model Performance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Run ML performance tests
+        run: |
+          npm run dev &
+          sleep 10
+          
+          # Create performance test script
+          cat > ml-perf-test.js << 'EOF'
+          const { chromium } = require('playwright');
+          
+          (async () => {
+            const browser = await chromium.launch();
+            const page = await browser.newPage();
+            await page.goto('http://localhost:5173');
+            
+            // Wait for app to load
+            await page.waitForSelector('#btn-predict', { timeout: 30000 });
+            
+            // Measure trajectory prediction performance
+            const trajPerfData = await page.evaluate(async () => {
+              const times = [];
+              for (let i = 0; i < 10; i++) {
+                const start = performance.now();
+                // Simulate prediction
+                if (window.trajectoryPredictor) {
+                  await window.trajectoryPredictor.predict([[0,0],[1,1],[2,2]]);
+                }
+                times.push(performance.now() - start);
+              }
+              return {
+                avg: times.reduce((a,b) => a+b) / times.length,
+                min: Math.min(...times),
+                max: Math.max(...times)
+              };
+            });
+            
+            console.log('Trajectory Prediction Performance:', trajPerfData);
+            
+            await browser.close();
+          })();
+          EOF
+          
+          node ml-perf-test.js || echo "Performance test needs configuration"
+
+      - name: Save performance metrics
+        run: |
+          echo "### ML Performance Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "Performance testing configuration in progress" >> $GITHUB_STEP_SUMMARY

@@ -1,354 +1,368 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Autonomous Vehicle ML Demo - Murray Kopit</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0a0a0a;
-            color: #f0f0f0;
-            overflow-x: hidden;
-        }
-        
-        .header {
-            background: linear-gradient(90deg, #1a1a2e 0%, #16213e 100%);
-            padding: 1.5rem 2rem;
-            border-bottom: 2px solid #0f3460;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        }
-        
-        .header h1 {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-            background: linear-gradient(90deg, #4fbdba 0%, #7ec8e3 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        
-        .header p {
-            color: #a0a0a0;
-            font-size: 1rem;
-        }
-        
-        .dashboard {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-            gap: 1.5rem;
-            padding: 1.5rem;
-            max-width: 1800px;
-            margin: 0 auto;
-        }
-        
-        .panel {
-            background: #1a1a2e;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            border: 1px solid #16213e;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .panel::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #4fbdba 0%, #7ec8e3 100%);
-        }
-        
-        .panel h2 {
-            font-size: 1.25rem;
-            margin-bottom: 1rem;
-            color: #7ec8e3;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .chart-container {
-            width: 100%;
-            height: 350px;
-            background: #0f0f1e;
-            border-radius: 8px;
-            padding: 0.5rem;
-        }
-        
-        .controls {
-            display: flex;
-            gap: 1rem;
-            margin-top: 1rem;
-            flex-wrap: wrap;
-        }
-        
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.95rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(90deg, #4fbdba 0%, #7ec8e3 100%);
-            color: #0a0a0a;
-        }
-        
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(127, 200, 227, 0.4);
-        }
-        
-        .btn-secondary {
-            background: #2a2a3e;
-            color: #f0f0f0;
-            border: 1px solid #4fbdba;
-        }
-        
-        .btn-secondary:hover {
-            background: #3a3a4e;
-        }
-        
-        .btn-danger {
-            background: #e53e3e;
-            color: #fff;
-        }
-        
-        .status-bar {
-            background: #16213e;
-            padding: 1rem;
-            border-radius: 8px;
-            margin-top: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-        
-        .status-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .status-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #4fbdba;
-            box-shadow: 0 0 10px #4fbdba;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-        
-        .metric-card {
-            background: #16213e;
-            padding: 1rem;
-            border-radius: 8px;
-            text-align: center;
-        }
-        
-        .metric-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #4fbdba;
-        }
-        
-        .metric-label {
-            color: #a0a0a0;
-            font-size: 0.9rem;
-            margin-top: 0.25rem;
-        }
-        
-        .grid-metrics {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-        
-        .slider-container {
-            margin-top: 1rem;
-        }
-        
-        .slider {
-            width: 100%;
-            height: 6px;
-            border-radius: 3px;
-            background: #2a2a3e;
-            outline: none;
-            -webkit-appearance: none;
-        }
-        
-        .slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #4fbdba;
-            cursor: pointer;
-        }
-        
-        .slider::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #4fbdba;
-            cursor: pointer;
-        }
-        
-        @media (max-width: 768px) {
-            .dashboard {
-                grid-template-columns: 1fr;
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Autonomous Vehicle ML Demo - Murray Kopit</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
             }
-            
+
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background: #0a0a0a;
+                color: #f0f0f0;
+                overflow-x: hidden;
+            }
+
+            .header {
+                background: linear-gradient(90deg, #1a1a2e 0%, #16213e 100%);
+                padding: 1.5rem 2rem;
+                border-bottom: 2px solid #0f3460;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            }
+
             .header h1 {
-                font-size: 1.5rem;
+                font-size: 2rem;
+                margin-bottom: 0.5rem;
+                background: linear-gradient(90deg, #4fbdba 0%, #7ec8e3 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
             }
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>Autonomous Vehicle ML Demo</h1>
-        <p>Real-time Machine Learning Capabilities for Next-Generation Autonomous Vehicles</p>
-    </div>
-    
-    <div class="dashboard">
-        <!-- Trajectory Prediction Panel -->
-        <div class="panel">
-            <h2>🚗 Trajectory Prediction</h2>
-            <div id="trajectory-chart" class="chart-container"></div>
-            <div class="controls">
-                <button id="btn-predict" class="btn btn-primary">Start Prediction</button>
-                <button id="btn-add-vehicle" class="btn btn-secondary">Add Vehicle</button>
-                <button id="btn-clear-trajectories" class="btn btn-danger">Clear</button>
-            </div>
-            <div class="grid-metrics">
-                <div class="metric-card">
-                    <div class="metric-value" id="prediction-accuracy">95.2%</div>
-                    <div class="metric-label">Prediction Accuracy</div>
+
+            .header p {
+                color: #a0a0a0;
+                font-size: 1rem;
+            }
+
+            .dashboard {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+                gap: 1.5rem;
+                padding: 1.5rem;
+                max-width: 1800px;
+                margin: 0 auto;
+            }
+
+            .panel {
+                background: #1a1a2e;
+                border-radius: 12px;
+                padding: 1.5rem;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+                border: 1px solid #16213e;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .panel::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 3px;
+                background: linear-gradient(90deg, #4fbdba 0%, #7ec8e3 100%);
+            }
+
+            .panel h2 {
+                font-size: 1.25rem;
+                margin-bottom: 1rem;
+                color: #7ec8e3;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+            .chart-container {
+                width: 100%;
+                height: 350px;
+                background: #0f0f1e;
+                border-radius: 8px;
+                padding: 0.5rem;
+            }
+
+            .controls {
+                display: flex;
+                gap: 1rem;
+                margin-top: 1rem;
+                flex-wrap: wrap;
+            }
+
+            .btn {
+                padding: 0.75rem 1.5rem;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 0.95rem;
+                font-weight: 600;
+                transition: all 0.3s ease;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .btn-primary {
+                background: linear-gradient(90deg, #4fbdba 0%, #7ec8e3 100%);
+                color: #0a0a0a;
+            }
+
+            .btn-primary:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(127, 200, 227, 0.4);
+            }
+
+            .btn-secondary {
+                background: #2a2a3e;
+                color: #f0f0f0;
+                border: 1px solid #4fbdba;
+            }
+
+            .btn-secondary:hover {
+                background: #3a3a4e;
+            }
+
+            .btn-danger {
+                background: #e53e3e;
+                color: #fff;
+            }
+
+            .status-bar {
+                background: #16213e;
+                padding: 1rem;
+                border-radius: 8px;
+                margin-top: 1rem;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+
+            .status-item {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+            .status-indicator {
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                background: #4fbdba;
+                box-shadow: 0 0 10px #4fbdba;
+                animation: pulse 2s infinite;
+            }
+
+            @keyframes pulse {
+                0% {
+                    opacity: 1;
+                }
+                50% {
+                    opacity: 0.5;
+                }
+                100% {
+                    opacity: 1;
+                }
+            }
+
+            .metric-card {
+                background: #16213e;
+                padding: 1rem;
+                border-radius: 8px;
+                text-align: center;
+            }
+
+            .metric-value {
+                font-size: 2rem;
+                font-weight: bold;
+                color: #4fbdba;
+            }
+
+            .metric-label {
+                color: #a0a0a0;
+                font-size: 0.9rem;
+                margin-top: 0.25rem;
+            }
+
+            .grid-metrics {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 1rem;
+                margin-top: 1rem;
+            }
+
+            .slider-container {
+                margin-top: 1rem;
+            }
+
+            .slider {
+                width: 100%;
+                height: 6px;
+                border-radius: 3px;
+                background: #2a2a3e;
+                outline: none;
+                -webkit-appearance: none;
+            }
+
+            .slider::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                background: #4fbdba;
+                cursor: pointer;
+            }
+
+            .slider::-moz-range-thumb {
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                background: #4fbdba;
+                cursor: pointer;
+            }
+
+            @media (max-width: 768px) {
+                .dashboard {
+                    grid-template-columns: 1fr;
+                }
+
+                .header h1 {
+                    font-size: 1.5rem;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>Autonomous Vehicle ML Demo</h1>
+            <p>Real-time Machine Learning Capabilities for Next-Generation Autonomous Vehicles</p>
+        </div>
+
+        <div class="dashboard">
+            <!-- Trajectory Prediction Panel -->
+            <div class="panel">
+                <h2>🚗 Trajectory Prediction</h2>
+                <div id="trajectory-chart" class="chart-container"></div>
+                <div class="controls">
+                    <button id="btn-predict" class="btn btn-primary">Start Prediction</button>
+                    <button id="btn-add-vehicle" class="btn btn-secondary">Add Vehicle</button>
+                    <button id="btn-clear-trajectories" class="btn btn-danger">Clear</button>
                 </div>
-                <div class="metric-card">
-                    <div class="metric-value" id="active-agents">0</div>
-                    <div class="metric-label">Active Agents</div>
+                <div class="grid-metrics">
+                    <div class="metric-card">
+                        <div class="metric-value" id="prediction-accuracy">95.2%</div>
+                        <div class="metric-label">Prediction Accuracy</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="active-agents">0</div>
+                        <div class="metric-label">Active Agents</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sensor Anomaly Detection Panel -->
+            <div class="panel">
+                <h2>📡 Sensor Anomaly Detection</h2>
+                <div id="anomaly-chart" class="chart-container"></div>
+                <div class="controls">
+                    <button id="btn-start-monitoring" class="btn btn-primary">Start Monitoring</button>
+                    <button id="btn-inject-anomaly" class="btn btn-secondary">Inject Anomaly</button>
+                    <button id="btn-reset-sensors" class="btn btn-danger">Reset</button>
+                </div>
+                <div class="slider-container">
+                    <label>Anomaly Threshold: <span id="threshold-value">0.85</span></label>
+                    <input
+                        type="range"
+                        id="anomaly-threshold"
+                        class="slider"
+                        min="0.5"
+                        max="1.0"
+                        step="0.05"
+                        value="0.85"
+                    />
+                </div>
+            </div>
+
+            <!-- Model Performance Panel -->
+            <div class="panel">
+                <h2>📊 Model Performance Metrics</h2>
+                <div id="performance-chart" class="chart-container"></div>
+                <div class="grid-metrics">
+                    <div class="metric-card">
+                        <div class="metric-value" id="inference-time">12ms</div>
+                        <div class="metric-label">Avg Inference Time</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="fps-count">30</div>
+                        <div class="metric-label">FPS</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="confidence-score">0.92</div>
+                        <div class="metric-label">Confidence</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Object Detection Confidence Panel -->
+            <div class="panel">
+                <h2>🎯 Object Detection Confidence</h2>
+                <div id="detection-chart" class="chart-container"></div>
+                <div class="controls">
+                    <button id="btn-start-detection" class="btn btn-primary">Start Detection</button>
+                    <button id="btn-simulate-scene" class="btn btn-secondary">Simulate Scene</button>
+                </div>
+                <div class="status-bar">
+                    <div class="status-item">
+                        <div class="status-indicator"></div>
+                        <span>Model Active</span>
+                    </div>
+                    <div class="status-item">
+                        <span id="objects-detected">Objects Detected: 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Continuous Learning Visualization -->
+            <div class="panel">
+                <h2>🧠 Continuous Learning Progress</h2>
+                <div id="learning-chart" class="chart-container"></div>
+                <div class="controls">
+                    <button id="btn-train-iteration" class="btn btn-primary">Train Iteration</button>
+                    <button id="btn-load-checkpoint" class="btn btn-secondary">Load Checkpoint</button>
+                </div>
+                <div class="grid-metrics">
+                    <div class="metric-card">
+                        <div class="metric-value" id="training-epochs">0</div>
+                        <div class="metric-label">Training Epochs</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="model-version">1.0.0</div>
+                        <div class="metric-label">Model Version</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-time Sensor Fusion -->
+            <div class="panel">
+                <h2>🔄 Real-time Sensor Fusion</h2>
+                <div id="fusion-chart" class="chart-container"></div>
+                <div class="controls">
+                    <button id="btn-toggle-lidar" class="btn btn-secondary">Toggle LiDAR</button>
+                    <button id="btn-toggle-camera" class="btn btn-secondary">Toggle Camera</button>
+                    <button id="btn-toggle-radar" class="btn btn-secondary">Toggle Radar</button>
+                </div>
+                <div class="status-bar">
+                    <div class="status-item">
+                        <span>Sensor Health: </span>
+                        <span id="sensor-health" style="color: #4fbdba">All Systems Operational</span>
+                    </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Sensor Anomaly Detection Panel -->
-        <div class="panel">
-            <h2>📡 Sensor Anomaly Detection</h2>
-            <div id="anomaly-chart" class="chart-container"></div>
-            <div class="controls">
-                <button id="btn-start-monitoring" class="btn btn-primary">Start Monitoring</button>
-                <button id="btn-inject-anomaly" class="btn btn-secondary">Inject Anomaly</button>
-                <button id="btn-reset-sensors" class="btn btn-danger">Reset</button>
-            </div>
-            <div class="slider-container">
-                <label>Anomaly Threshold: <span id="threshold-value">0.85</span></label>
-                <input type="range" id="anomaly-threshold" class="slider" min="0.5" max="1.0" step="0.05" value="0.85">
-            </div>
-        </div>
-        
-        <!-- Model Performance Panel -->
-        <div class="panel">
-            <h2>📊 Model Performance Metrics</h2>
-            <div id="performance-chart" class="chart-container"></div>
-            <div class="grid-metrics">
-                <div class="metric-card">
-                    <div class="metric-value" id="inference-time">12ms</div>
-                    <div class="metric-label">Avg Inference Time</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-value" id="fps-count">30</div>
-                    <div class="metric-label">FPS</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-value" id="confidence-score">0.92</div>
-                    <div class="metric-label">Confidence</div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Object Detection Confidence Panel -->
-        <div class="panel">
-            <h2>🎯 Object Detection Confidence</h2>
-            <div id="detection-chart" class="chart-container"></div>
-            <div class="controls">
-                <button id="btn-start-detection" class="btn btn-primary">Start Detection</button>
-                <button id="btn-simulate-scene" class="btn btn-secondary">Simulate Scene</button>
-            </div>
-            <div class="status-bar">
-                <div class="status-item">
-                    <div class="status-indicator"></div>
-                    <span>Model Active</span>
-                </div>
-                <div class="status-item">
-                    <span id="objects-detected">Objects Detected: 0</span>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Continuous Learning Visualization -->
-        <div class="panel">
-            <h2>🧠 Continuous Learning Progress</h2>
-            <div id="learning-chart" class="chart-container"></div>
-            <div class="controls">
-                <button id="btn-train-iteration" class="btn btn-primary">Train Iteration</button>
-                <button id="btn-load-checkpoint" class="btn btn-secondary">Load Checkpoint</button>
-            </div>
-            <div class="grid-metrics">
-                <div class="metric-card">
-                    <div class="metric-value" id="training-epochs">0</div>
-                    <div class="metric-label">Training Epochs</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-value" id="model-version">1.0.0</div>
-                    <div class="metric-label">Model Version</div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Real-time Sensor Fusion -->
-        <div class="panel">
-            <h2>🔄 Real-time Sensor Fusion</h2>
-            <div id="fusion-chart" class="chart-container"></div>
-            <div class="controls">
-                <button id="btn-toggle-lidar" class="btn btn-secondary">Toggle LiDAR</button>
-                <button id="btn-toggle-camera" class="btn btn-secondary">Toggle Camera</button>
-                <button id="btn-toggle-radar" class="btn btn-secondary">Toggle Radar</button>
-            </div>
-            <div class="status-bar">
-                <div class="status-item">
-                    <span>Sensor Health: </span>
-                    <span id="sensor-health" style="color: #4fbdba;">All Systems Operational</span>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <script type="module" src="/src/main.js"></script>
-</body>
+
+        <script type="module" src="/src/main.js"></script>
+    </body>
 </html>

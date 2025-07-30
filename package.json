@@ -7,9 +7,28 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node test.js"
+    "test": "node test.js",
+    "test:playwright": "playwright test",
+    "test:visual": "playwright test tests/visual-regression.spec.js",
+    "test:autonomous": "playwright test tests/autonomous.spec.js",
+    "test:smoke": "playwright test tests/smoke.spec.js",
+    "lint": "eslint src/**/*.js",
+    "lint:fix": "eslint src/**/*.js --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "analyze": "vite build --mode analyze",
+    "fix:autonomous": "node scripts/autonomous-fix.js",
+    "docs:generate": "jsdoc -c jsdoc.json",
+    "docs:api": "jsdoc2md src/**/*.js > API.md",
+    "prepare": "husky",
+    "pre-commit": "npm run lint && npm run format:check"
   },
-  "keywords": ["machine-learning", "autonomous-vehicles", "real-time", "visualization"],
+  "keywords": [
+    "machine-learning",
+    "autonomous-vehicles",
+    "real-time",
+    "visualization"
+  ],
   "author": "Murray Kopit",
   "license": "MIT",
   "dependencies": {
@@ -18,7 +37,11 @@
     "simple-statistics": "^7.8.5"
   },
   "devDependencies": {
-    "vite": "^7.0.6",
-    "@playwright/test": "^1.54.1"
+    "@playwright/test": "^1.54.1",
+    "eslint": "^9.32.0",
+    "husky": "^9.1.7",
+    "prettier": "^3.6.2",
+    "rollup-plugin-visualizer": "^6.0.3",
+    "vite": "^7.0.6"
   }
 }
