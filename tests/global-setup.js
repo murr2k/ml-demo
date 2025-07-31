@@ -21,7 +21,8 @@ async function globalSetup(config) {
 
         try {
             // Navigate to the app to trigger initial build
-            await page.goto(config.use.baseURL, { waitUntil: 'networkidle' })
+            const baseURL = config.use?.baseURL || 'http://localhost:5173'
+            await page.goto(baseURL, { waitUntil: 'networkidle' })
             console.log('✅ Application is ready for testing')
         } catch (error) {
             console.warn('⚠️  Could not pre-warm application:', error.message)
@@ -34,7 +35,7 @@ async function globalSetup(config) {
     const metadata = {
         startTime: new Date().toISOString(),
         environment: process.env.CI ? 'ci' : 'local',
-        baseURL: config.use.baseURL,
+        baseURL: config.use?.baseURL || 'http://localhost:5173',
     }
 
     await fs.writeFile(path.join(testResultsDir, 'metadata.json'), JSON.stringify(metadata, null, 2))

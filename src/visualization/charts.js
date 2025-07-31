@@ -1,3 +1,8 @@
+// Helper function for colors since lc.ColorRGBA is not available in this version
+function ColorRGBA(r, g, b, a = 255) {
+    return { r, g, b, a }
+}
+
 export function setupCharts(lc) {
     console.log('Setting up charts with LightningChart instance:', lc)
     const charts = {}
@@ -162,7 +167,7 @@ function setupAnomalyChart(lc) {
     const thresholdSeries = chart.addLineSeries()
     thresholdSeries.setName('Threshold')
     thresholdSeries.setStrokeStyle(stroke =>
-        stroke.setThickness(2).setFillStyle(fill => fill.setColor(lc.ColorRGBA(255, 0, 0)))
+        stroke.setThickness(2).setFillStyle(fill => fill.setColor(ColorRGBA(255, 0, 0)))
     )
 
     let dataPoints = 0
@@ -196,7 +201,7 @@ function setupAnomalyChart(lc) {
                     pointSize: 15,
                 })
                 marker.add([{ x, y: score }])
-                marker.setPointFillStyle(fill => fill.setColor(lc.ColorRGBA(255, 0, 0)))
+                marker.setPointFillStyle(fill => fill.setColor(ColorRGBA(255, 0, 0)))
 
                 setTimeout(() => marker.dispose(), 5000)
             }
@@ -253,7 +258,7 @@ function setupPerformanceChart(lc) {
     })
     fpsChart.setTitle('Frames Per Second')
     const fpsSeries = fpsChart.addLineSeries()
-    fpsSeries.setStrokeStyle(stroke => stroke.setFillStyle(fill => fill.setColor(lc.ColorRGBA(0, 255, 0))))
+    fpsSeries.setStrokeStyle(stroke => stroke.setFillStyle(fill => fill.setColor(ColorRGBA(0, 255, 0))))
 
     // CPU Usage Chart
     const cpuChart = dashboard.createChartXY({
@@ -307,12 +312,12 @@ function setupDetectionChart(lc) {
 
     const detectionSeries = new Map()
     const classColors = {
-        vehicle: lc.ColorRGBA(0, 255, 0),
-        pedestrian: lc.ColorRGBA(255, 255, 0),
-        cyclist: lc.ColorRGBA(0, 255, 255),
-        traffic_sign: lc.ColorRGBA(255, 0, 255),
-        traffic_light: lc.ColorRGBA(255, 128, 0),
-        road_marking: lc.ColorRGBA(128, 128, 255),
+        vehicle: ColorRGBA(0, 255, 0),
+        pedestrian: ColorRGBA(255, 255, 0),
+        cyclist: ColorRGBA(0, 255, 255),
+        traffic_sign: ColorRGBA(255, 0, 255),
+        traffic_light: ColorRGBA(255, 128, 0),
+        road_marking: ColorRGBA(128, 128, 255),
     }
 
     return {
@@ -345,7 +350,7 @@ function setupDetectionChart(lc) {
                 series.add(rectangles)
                 series.setFillStyle(fill =>
                     fill
-                        .setColor(classColors[className] || lc.ColorRGBA(255, 255, 255))
+                        .setColor(classColors[className] || ColorRGBA(255, 255, 255))
                         .setA(Math.floor(classDetections[0].confidence * 255))
                 )
 
@@ -376,7 +381,7 @@ function setupLearningChart(lc) {
 
     const valLoss = lossChart.addLineSeries()
     valLoss.setName('Validation Loss')
-    valLoss.setStrokeStyle(stroke => stroke.setFillStyle(fill => fill.setColor(lc.ColorRGBA(255, 128, 0))))
+    valLoss.setStrokeStyle(stroke => stroke.setFillStyle(fill => fill.setColor(ColorRGBA(255, 128, 0))))
 
     // Accuracy Chart
     const accChart = dashboard.createChartXY({
@@ -389,11 +394,11 @@ function setupLearningChart(lc) {
 
     const trainAcc = accChart.addLineSeries()
     trainAcc.setName('Training Accuracy')
-    trainAcc.setStrokeStyle(stroke => stroke.setFillStyle(fill => fill.setColor(lc.ColorRGBA(0, 255, 0))))
+    trainAcc.setStrokeStyle(stroke => stroke.setFillStyle(fill => fill.setColor(ColorRGBA(0, 255, 0))))
 
     const valAcc = accChart.addLineSeries()
     valAcc.setName('Validation Accuracy')
-    valAcc.setStrokeStyle(stroke => stroke.setFillStyle(fill => fill.setColor(lc.ColorRGBA(0, 255, 255))))
+    valAcc.setStrokeStyle(stroke => stroke.setFillStyle(fill => fill.setColor(ColorRGBA(0, 255, 255))))
 
     return {
         addTrainingResult(result) {
@@ -453,7 +458,7 @@ function setupFusionChart(lc) {
             const fusedSeries = chart.addPointSeries3D()
             fusedSeries.setName('Fused Objects')
             fusedSeries.setPointStyle(style =>
-                style.setSize(15).setFillStyle(fill => fill.setColor(lc.ColorRGBA(255, 255, 0)))
+                style.setSize(15).setFillStyle(fill => fill.setColor(ColorRGBA(255, 255, 0)))
             )
 
             const points = fusionResult.fusedData.map(obj => ({
@@ -481,7 +486,7 @@ function setupFusionChart(lc) {
                         style
                             .setSize(20)
                             .setFillStyle(fill =>
-                                fill.setColor(lc.ColorRGBA(0, 255, 0)).setA(Math.floor(obj.confidence * 255))
+                                fill.setColor(ColorRGBA(0, 255, 0, Math.floor(obj.confidence * 255)))
                             )
                     )
 

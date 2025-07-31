@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chart Test</title>
+    <style>
+        body { margin: 20px; background: #1a1a1a; color: white; font-family: Arial; }
+        button { margin: 5px; padding: 10px; }
+        #status { margin: 20px 0; padding: 10px; border: 1px solid #4fbdba; }
+    </style>
+</head>
+<body>
+    <h1>Direct Chart Test</h1>
+    <div id="status">Status: Loading...</div>
+    
+    <button onclick="testTrajectory()">Test Trajectory Chart</button>
+    <button onclick="testAnomaly()">Test Anomaly Chart</button>
+    <button onclick="testDetection()">Test Detection Chart</button>
+    <button onclick="checkCharts()">Check All Charts</button>
+    
+    <script>
+        function updateStatus(msg) {
+            document.getElementById('status').innerHTML += '<br>' + new Date().toLocaleTimeString() + ': ' + msg;
+        }
+        
+        async function checkPage() {
+            // Open main page in iframe
+            const iframe = document.createElement('iframe');
+            iframe.src = 'http://localhost:5173';
+            iframe.style.width = '100%';
+            iframe.style.height = '800px';
+            iframe.style.border = '2px solid #4fbdba';
+            document.body.appendChild(iframe);
+            
+            // Wait for it to load
+            iframe.onload = () => {
+                updateStatus('Page loaded in iframe');
+                window.mlFrame = iframe.contentWindow;
+            };
+        }
+        
+        function checkCharts() {
+            if (!window.mlFrame) {
+                updateStatus('ERROR: Frame not loaded');
+                return;
+            }
+            
+            const charts = window.mlFrame.charts;
+            if (!charts) {
+                updateStatus('ERROR: No charts object found');
+                return;
+            }
+            
+            updateStatus('Charts found: ' + Object.keys(charts).join(', '));
+            
+            // Check each chart
+            Object.entries(charts).forEach(([name, chart]) => {
+                if (chart) {
+                    updateStatus(`✓ ${name} chart exists`);
+                } else {
+                    updateStatus(`✗ ${name} chart is null`);
+                }
+            });
+        }
+        
+        function testTrajectory() {
+            if (!window.mlFrame || !window.mlFrame.charts || !window.mlFrame.charts.trajectory) {
+                updateStatus('ERROR: Trajectory chart not available');
+                return;
+            }
+            
+            const chart = window.mlFrame.charts.trajectory;
+            
+            // Try to add test data
+            const testAgent = {
+                id: 'test_' + Date.now(),
+                type: 'vehicle',
+                position: { x: 0, y: 0 }
+            };
+            
+            try {
+                chart.addAgent(testAgent);
+                updateStatus('Added test agent: ' + testAgent.id);
+                
+                // Update position
+                let x = 0, y = 0;
+                const interval = setInterval(() => {
+                    x += Math.random() * 10 - 5;
+                    y += Math.random() * 10 - 5;
+                    chart.updateAgentPosition(testAgent.id, { x, y });
+                }, 100);
+                
+                setTimeout(() => clearInterval(interval), 5000);
+                updateStatus('Updating agent position for 5 seconds...');
+                
+            } catch (e) {
+                updateStatus('ERROR adding agent: ' + e.message);
+            }
+        }
+        
+        function testAnomaly() {
+            if (!window.mlFrame || !window.mlFrame.charts || !window.mlFrame.charts.anomaly) {
+                updateStatus('ERROR: Anomaly chart not available');
+                return;
+            }
+            
+            const chart = window.mlFrame.charts.anomaly;
+            
+            try {
+                // Add test data points
+                let x = 0;
+                const interval = setInterval(() => {
+                    const sensorData = {
+                        values: [
+                            Math.random(),
+                            Math.random(),
+                            Math.random(),
+                            Math.random(),
+                            Math.random()
+                        ]
+                    };
+                    const anomalyScore = Math.random();
+                    const threshold = 0.85;
+                    
+                    chart.addDataPoint(sensorData, anomalyScore, threshold);
+                    x++;
+                }, 200);
+                
+                setTimeout(() => clearInterval(interval), 5000);
+                updateStatus('Adding anomaly data for 5 seconds...');
+                
+            } catch (e) {
+                updateStatus('ERROR adding anomaly data: ' + e.message);
+            }
+        }
+        
+        function testDetection() {
+            if (!window.mlFrame || !window.mlFrame.charts || !window.mlFrame.charts.detection) {
+                updateStatus('ERROR: Detection chart not available');
+                return;
+            }
+            
+            const chart = window.mlFrame.charts.detection;
+            
+            try {
+                const detections = [
+                    { id: '1', class_name: 'car', confidence: 0.95, bounding_box: { x: 10, y: 10, width: 20, height: 10 } },
+                    { id: '2', class_name: 'pedestrian', confidence: 0.87, bounding_box: { x: -20, y: 5, width: 5, height: 10 } },
+                    { id: '3', class_name: 'bicycle', confidence: 0.76, bounding_box: { x: 0, y: -15, width: 8, height: 8 } }
+                ];
+                
+                chart.updateDetections(detections);
+                updateStatus('Updated detections: ' + detections.length + ' objects');
+                
+            } catch (e) {
+                updateStatus('ERROR updating detections: ' + e.message);
+            }
+        }
+        
+        // Start
+        updateStatus('Initializing...');
+        checkPage();
+    </script>
+</body>
+</html>

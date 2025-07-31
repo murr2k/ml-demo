@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Minimal Test</title>
+    <style>
+        body { background: #0a0a0a; color: white; font-family: Arial; padding: 20px; }
+        .status { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Minimal Page Test</h1>
+    <div class="status" id="status">Loading...</div>
+    <div class="status" id="tf-status">TensorFlow: Not loaded</div>
+    <div class="status" id="chart-status">Charts: Not loaded</div>
+    
+    <script type="module">
+        document.getElementById('status').textContent = 'Page loaded, starting modules...';
+        
+        // Test TensorFlow loading
+        import('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js').then(() => {
+            document.getElementById('tf-status').textContent = 'TensorFlow: Loaded';
+        }).catch(err => {
+            document.getElementById('tf-status').textContent = 'TensorFlow: Error - ' + err.message;
+        });
+        
+        // Test LightningChart
+        import('https://unpkg.com/@lightningchart/lcjs@6.1.0/dist/lcjs.iife.js').then(() => {
+            document.getElementById('chart-status').textContent = 'Charts: Loaded';
+        }).catch(err => {
+            document.getElementById('chart-status').textContent = 'Charts: Error - ' + err.message;
+        });
+        
+        document.getElementById('status').textContent = 'All tests initiated';
+    </script>
+</body>
+</html>

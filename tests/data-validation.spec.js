@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 test.describe('ML Model Data Validation', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/')
-        await page.waitForSelector('.lcjs-chart', { state: 'visible' })
+        await page.waitForSelector('.chart-container canvas', { state: 'visible' })
 
         // Expose test helpers to the page
         await page.evaluate(() => {

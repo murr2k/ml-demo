@@ -96,6 +96,9 @@ test.describe('ML Demo Tests', () => {
         // Toggle sensors
         await lidarBtn.click()
         await cameraBtn.click()
+        
+        // Wait for UI update
+        await page.waitForTimeout(500)
 
         // Check sensor health status
         const sensorHealth = page.locator('#sensor-health')

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ML WebSocket Debug</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #0f0;
+            padding: 20px;
+        }
+        .log {
+            background: #000;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #0f0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0a0;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #0f0;
+        }
+    </style>
+</head>
+<body>
+    <h1>ML WebSocket Debug Console</h1>
+    
+    <div class="status">
+        <div>Connection Status: <span id="status">Disconnected</span></div>
+        <div>Server: ws://localhost:8080/ws</div>
+    </div>
+    
+    <div>
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()">Disconnect</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <h2>Test Requests</h2>
+    <div>
+        <button onclick="testTrajectory()">Test Trajectory</button>
+        <button onclick="testAnomaly()">Test Anomaly</button>
+        <button onclick="testObjects()">Test Objects</button>
+        <button onclick="testFusion()">Test Fusion</button>
+        <button onclick="testHeartbeat()">Test Heartbeat</button>
+    </div>
+    
+    <h2>WebSocket Log</h2>
+    <div id="log" class="log"></div>
+    
+    <script>
+        let ws = null;
+        const log = document.getElementById('log');
+        const status = document.getElementById('status');
+        
+        function addLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.style.color = type === 'error' ? '#f00' : (type === 'sent' ? '#ff0' : '#0f0');
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${type.toUpperCase()}: ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                addLog('Already connected', 'info');
+                return;
+            }
+            
+            addLog('Connecting to ws://localhost:8080/ws...', 'info');
+            ws = new WebSocket('ws://localhost:8080/ws');
+            
+            ws.onopen = () => {
+                addLog('Connected!', 'info');
+                status.textContent = 'Connected';
+                status.style.color = '#0f0';
+            };
+            
+            ws.onmessage = (event) => {
+                addLog('Received: ' + event.data, 'recv');
+                try {
+                    const msg = JSON.parse(event.data);
+                    addLog('Parsed message type: ' + msg.message_type, 'info');
+                } catch (e) {
+                    addLog('Failed to parse message: ' + e.message, 'error');
+                }
+            };
+            
+            ws.onerror = (error) => {
+                addLog('WebSocket error: ' + error, 'error');
+            };
+            
+            ws.onclose = () => {
+                addLog('Disconnected', 'info');
+                status.textContent = 'Disconnected';
+                status.style.color = '#f00';
+            };
+        }
+        
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+        
+        function send(data) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                addLog('Not connected!', 'error');
+                return;
+            }
+            
+            const json = JSON.stringify(data);
+            addLog('Sending: ' + json, 'sent');
+            ws.send(json);
+        }
+        
+        function clearLog() {
+            log.innerHTML = '';
+        }
+        
+        function testTrajectory() {
+            send({
+                message_type: 'inference_request',
+                payload: {
+                    model_type: 'trajectory_prediction',
+                    data: {
+                        history: [
+                            { x: 0, y: 0, timestamp: Date.now() - 200 },
+                            { x: 1, y: 1, timestamp: Date.now() - 100 },
+                            { x: 2, y: 2, timestamp: Date.now() }
+                        ],
+                        prediction_horizon: 5
+                    }
+                }
+            });
+        }
+        
+        function testAnomaly() {
+            send({
+                message_type: 'inference_request',
+                payload: {
+                    model_type: 'anomaly_detection',
+                    data: {
+                        sensor_readings: [
+                            {
+                                sensor_type: 'lidar',
+                                values: [0.5, 0.6, 0.5, 0.7, 0.6],
+                                timestamp: Date.now()
+                            },
+                            {
+                                sensor_type: 'camera',
+                                values: [0.8, 0.7, 0.8, 0.9, 0.8],
+                                timestamp: Date.now()
+                            }
+                        ]
+                    }
+                }
+            });
+        }
+        
+        function testObjects() {
+            send({
+                message_type: 'inference_request',
+                payload: {
+                    model_type: 'object_detection',
+                    data: {
+                        frame_id: 'test_frame_1',
+                        timestamp: Date.now(),
+                        simulate_complex: false
+                    }
+                }
+            });
+        }
+        
+        function testFusion() {
+            send({
+                message_type: 'inference_request',
+                payload: {
+                    model_type: 'sensor_fusion',
+                    data: {
+                        sensor_data: {
+                            lidar: true,
+                            camera: true,
+                            radar: false
+                        },
+                        timestamp: Date.now()
+                    }
+                }
+            });
+        }
+        
+        function testHeartbeat() {
+            send({
+                message_type: 'heartbeat',
+                payload: {
+                    timestamp: new Date().toISOString()
+                }
+            });
+        }
+        
+        // Auto-connect on load
+        window.onload = () => {
+            connect();
+        };
+    </script>
+</body>
+</html>

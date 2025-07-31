@@ -38,3 +38,5 @@ async function globalTeardown() {
 
     console.log('\n✅ Global teardown completed')
 }
+
+export default globalTeardown

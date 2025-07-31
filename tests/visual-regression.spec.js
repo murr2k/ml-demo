@@ -3,8 +3,8 @@ import { test, expect } from '@playwright/test'
 test.describe('Visual Regression Tests', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/')
-        // Wait for app to fully load
-        await page.waitForSelector('.lcjs-chart', { state: 'visible' })
+        // Wait for app to fully load - LightningChart renders to canvas elements
+        await page.waitForSelector('.chart-container canvas', { state: 'visible' })
         await page.waitForTimeout(1000) // Allow charts to stabilize
     })
 
@@ -179,7 +179,7 @@ test.describe('Visual Regression Tests', () => {
         })
 
         // Wait for full load
-        await page.waitForSelector('.lcjs-chart', { state: 'visible' })
+        await page.waitForSelector('.chart-container canvas', { state: 'visible' })
         await page.waitForTimeout(1000)
 
         // Verify loaded state
