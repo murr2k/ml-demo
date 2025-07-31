@@ -32,3 +32,18 @@ playwright/.cache/
 .env
 .env.local
 .env.production
+
+# Rust build artifacts
+ml-server/target/
+ml-server/Cargo.lock
+
+# Debug files
+*.pdb
+*.dSYM
+
+# Temporary files
+*.tmp
+*.temp
+debug-*.png
+debug-*.html
+debug-*.js
