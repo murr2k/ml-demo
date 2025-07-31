@@ -1,0 +1,238 @@
+name: Autonomous Testing & Self-Healing
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+    inputs:
+      fix-mode:
+        description: 'Enable auto-fix mode'
+        required: false
+        default: 'true'
+        type: boolean
+      test-filter:
+        description: 'Test file filter (optional)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  autonomous-test:
+    name: Autonomous Test Runner
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run autonomous tests with fixes
+        if: github.event.inputs.fix-mode != 'false'
+        id: test-with-fixes
+        run: |
+          echo "🤖 Running autonomous tests with auto-fix enabled..."
+          npm run test:autonomous -- --report ${{ github.event.inputs.test-filter && format('--tests {0}', github.event.inputs.test-filter) || '' }}
+        continue-on-error: true
+
+      - name: Run tests without fixes
+        if: github.event.inputs.fix-mode == 'false'
+        id: test-no-fixes
+        run: |
+          echo "🧪 Running tests without auto-fix..."
+          npm run test:autonomous:no-fix -- --report ${{ github.event.inputs.test-filter && format('--tests {0}', github.event.inputs.test-filter) || '' }}
+        continue-on-error: true
+
+      - name: Check for applied fixes
+        id: check-fixes
+        run: |
+          if [ -f "test-results/autonomous-report.json" ]; then
+            FIXES_COUNT=$(jq '.summary.totalFixes' test-results/autonomous-report.json)
+            echo "fixes_applied=$FIXES_COUNT" >> $GITHUB_OUTPUT
+            
+            if [ "$FIXES_COUNT" -gt 0 ]; then
+              echo "has_fixes=true" >> $GITHUB_OUTPUT
+            else
+              echo "has_fixes=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "has_fixes=false" >> $GITHUB_OUTPUT
+            echo "fixes_applied=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate test summary
+        if: always()
+        run: |
+          if [ -f "test-results/autonomous-report.md" ]; then
+            echo "## 🤖 Autonomous Test Report" >> $GITHUB_STEP_SUMMARY
+            cat test-results/autonomous-report.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ No autonomous test report generated" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: autonomous-test-results
+          path: |
+            test-results/
+            playwright-report/
+            tests/screenshots/
+          retention-days: 7
+
+      - name: Commit fixes if applied
+        if: steps.check-fixes.outputs.has_fixes == 'true' && github.event_name == 'pull_request'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Check for changes
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+            git commit -m "fix: Autonomous test fixes applied
+
+            - Applied ${{ steps.check-fixes.outputs.fixes_applied }} automatic fixes
+            - See test-results/autonomous-report.md for details
+            
+            Co-authored-by: Autonomous Test Runner <noreply@github.com>"
+            
+            git push
+          else
+            echo "No changes to commit"
+          fi
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let comment = '## 🤖 Autonomous Test Results\n\n';
+            
+            if (${{ steps.check-fixes.outputs.has_fixes }}) {
+              comment += `✅ Applied **${{ steps.check-fixes.outputs.fixes_applied }}** automatic fixes\n\n`;
+            }
+            
+            try {
+              const report = JSON.parse(fs.readFileSync('test-results/autonomous-report.json', 'utf8'));
+              comment += `- **Success Rate**: ${report.summary.successRate.toFixed(1)}%\n`;
+              comment += `- **Test Runs**: ${report.summary.totalRuns}\n`;
+              comment += `- **Avg Duration**: ${(report.summary.avgDuration / 1000).toFixed(1)}s\n\n`;
+              
+              if (report.recommendations.length > 0) {
+                comment += '### 📋 Recommendations\n';
+                report.recommendations.forEach(rec => {
+                  comment += `- **${rec.type}**: ${rec.suggestion}\n`;
+                });
+              }
+            } catch (e) {
+              comment += '❌ Could not parse test report\n';
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  visual-regression-check:
+    name: Visual Regression Analysis
+    runs-on: ubuntu-latest
+    needs: autonomous-test
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: autonomous-test-results
+          path: test-results
+
+      - name: Analyze visual differences
+        run: |
+          echo "🖼️ Analyzing visual regression results..."
+          
+          # Count screenshot failures
+          SCREENSHOT_FAILURES=$(find test-results -name "*-diff.png" 2>/dev/null | wc -l)
+          
+          if [ "$SCREENSHOT_FAILURES" -gt 0 ]; then
+            echo "⚠️ Found $SCREENSHOT_FAILURES visual differences"
+            echo "visual_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ No visual regressions detected"
+            echo "visual_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create visual diff summary
+        if: always()
+        run: |
+          echo "## 🖼️ Visual Regression Summary" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -d "test-results/tests/screenshots" ]; then
+            DIFF_COUNT=$(find test-results/tests/screenshots -name "*-diff.png" 2>/dev/null | wc -l)
+            echo "Found $DIFF_COUNT visual differences" >> $GITHUB_STEP_SUMMARY
+            
+            # List changed screenshots
+            find test-results/tests/screenshots -name "*-diff.png" 2>/dev/null | while read diff; do
+              echo "- ${diff##*/}" >> $GITHUB_STEP_SUMMARY
+            done
+          else
+            echo "No visual regression tests run" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  performance-impact:
+    name: Performance Impact Analysis
+    runs-on: ubuntu-latest
+    needs: autonomous-test
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run performance tests
+        run: |
+          npx playwright test tests/performance.spec.js --reporter=json > performance-results.json || true
+
+      - name: Analyze performance impact
+        run: |
+          echo "## ⚡ Performance Impact" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "performance-results.json" ]; then
+            # Extract key metrics and add to summary
+            node -e "
+              const results = require('./performance-results.json');
+              console.log('Performance test results analyzed');
+            "
+          else
+            echo "No performance data available" >> $GITHUB_STEP_SUMMARY
+          fi

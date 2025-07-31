@@ -1,0 +1,251 @@
+name: Pre-Merge Autonomous Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+    branches: [main, develop]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: write
+
+jobs:
+  autonomous-validation:
+    name: Autonomous Pre-Merge Validation
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    
+    outputs:
+      tests_passed: ${{ steps.test-result.outputs.passed }}
+      fixes_applied: ${{ steps.test-result.outputs.fixes_applied }}
+      
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps
+
+      - name: Run pre-merge validation
+        id: validation
+        run: |
+          echo "🔍 Running pre-merge validation tests..."
+          
+          # Run critical tests first
+          npx playwright test tests/smoke.spec.js tests/data-validation.spec.js \
+            --reporter=json > critical-tests.json || CRITICAL_FAILED=true
+          
+          if [ "$CRITICAL_FAILED" = "true" ]; then
+            echo "❌ Critical tests failed"
+            echo "critical_passed=false" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Critical tests passed"
+            echo "critical_passed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run autonomous fixing
+        if: steps.validation.outputs.critical_passed == 'false'
+        id: auto-fix
+        run: |
+          echo "🤖 Attempting autonomous fixes..."
+          npm run test:autonomous -- --fix-attempts 3 --report
+
+      - name: Check test results
+        id: test-result
+        run: |
+          if [ -f "test-results/autonomous-report.json" ]; then
+            PASSED=$(jq -r '.testResults[-1].failed == 0' test-results/autonomous-report.json)
+            FIXES=$(jq -r '.summary.totalFixes' test-results/autonomous-report.json)
+            
+            echo "passed=$PASSED" >> $GITHUB_OUTPUT
+            echo "fixes_applied=$FIXES" >> $GITHUB_OUTPUT
+          else
+            # Check standard test results
+            if [ -f "test-results/results.json" ]; then
+              FAILED=$(jq -r '.stats.failed' test-results/results.json)
+              if [ "$FAILED" = "0" ]; then
+                echo "passed=true" >> $GITHUB_OUTPUT
+              else
+                echo "passed=false" >> $GITHUB_OUTPUT
+              fi
+            else
+              echo "passed=false" >> $GITHUB_OUTPUT
+            fi
+            echo "fixes_applied=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit autonomous fixes
+        if: steps.test-result.outputs.fixes_applied > 0
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+            git commit -m "fix: Apply autonomous test fixes
+
+            Applied ${{ steps.test-result.outputs.fixes_applied }} automatic fixes to pass pre-merge validation.
+            
+            Co-authored-by: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+            
+            git push
+          fi
+
+      - name: Update PR status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: checks } = await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'Autonomous Validation',
+              head_sha: context.payload.pull_request.head.sha,
+              status: 'completed',
+              conclusion: ${{ steps.test-result.outputs.passed }} ? 'success' : 'failure',
+              output: {
+                title: 'Autonomous Validation Results',
+                summary: ${{ steps.test-result.outputs.passed }} 
+                  ? '✅ All tests passed' + (${{ steps.test-result.outputs.fixes_applied }} > 0 
+                    ? ' (with ' + ${{ steps.test-result.outputs.fixes_applied }} + ' automatic fixes)' 
+                    : '')
+                  : '❌ Tests failed - manual intervention required',
+              }
+            });
+
+  visual-safety-check:
+    name: Visual Safety Check
+    runs-on: ubuntu-latest
+    needs: autonomous-validation
+    
+    steps:
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+          path: base
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          path: pr
+
+      - name: Setup comparison environment
+        run: |
+          cd base && npm ci && cd ..
+          cd pr && npm ci && cd ..
+          npx playwright install --with-deps chromium
+
+      - name: Capture baseline screenshots
+        run: |
+          cd base
+          npx playwright test tests/visual-regression.spec.js \
+            --project=chromium \
+            --update-snapshots
+
+      - name: Compare with PR changes
+        run: |
+          cd pr
+          cp -r ../base/tests/screenshots tests/
+          npx playwright test tests/visual-regression.spec.js \
+            --project=chromium || true
+
+      - name: Generate visual diff report
+        run: |
+          echo "## 🎨 Visual Comparison Report" >> $GITHUB_STEP_SUMMARY
+          
+          # Count visual differences
+          DIFFS=$(find pr/test-results -name "*-diff.png" 2>/dev/null | wc -l)
+          
+          if [ "$DIFFS" -gt 0 ]; then
+            echo "⚠️ Found $DIFFS visual differences" >> $GITHUB_STEP_SUMMARY
+            echo "Please review the visual changes before merging." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No visual regressions detected" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  merge-readiness:
+    name: Merge Readiness Check
+    runs-on: ubuntu-latest
+    needs: [autonomous-validation, visual-safety-check]
+    if: always()
+    
+    steps:
+      - name: Evaluate merge readiness
+        run: |
+          echo "## 🚦 Merge Readiness Status" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.autonomous-validation.outputs.tests_passed }}" = "true" ]; then
+            echo "✅ Automated tests: **PASSED**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Automated tests: **FAILED**" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.autonomous-validation.outputs.fixes_applied }}" -gt "0" ]; then
+            echo "🔧 Automatic fixes applied: **${{ needs.autonomous-validation.outputs.fixes_applied }}**" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Checklist" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] All tests passing" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Visual changes reviewed" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Performance impact acceptable" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] No security vulnerabilities" >> $GITHUB_STEP_SUMMARY
+
+      - name: Add merge status label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = [];
+            
+            if (${{ needs.autonomous-validation.outputs.tests_passed }}) {
+              labels.push('ready-to-merge');
+              
+              // Remove failure label if exists
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  name: 'needs-fix'
+                });
+              } catch (e) {}
+            } else {
+              labels.push('needs-fix');
+              
+              // Remove ready label if exists
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  name: 'ready-to-merge'
+                });
+              } catch (e) {}
+            }
+            
+            if (${{ needs.autonomous-validation.outputs.fixes_applied }} > 0) {
+              labels.push('auto-fixed');
+            }
+            
+            for (const label of labels) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: [label]
+              });
+            }

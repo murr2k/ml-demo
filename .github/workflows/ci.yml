@@ -58,6 +58,12 @@ jobs:
       - name: Run Playwright tests
         run: npx playwright test
         continue-on-error: true # Allow to continue for now
+      
+      - name: Run autonomous test analysis
+        if: failure()
+        run: |
+          echo "Tests failed, running autonomous analysis..."
+          npm run test:autonomous:no-fix -- --report || true
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
